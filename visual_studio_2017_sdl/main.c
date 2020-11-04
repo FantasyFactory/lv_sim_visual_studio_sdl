@@ -16,6 +16,12 @@
 #include "lv_examples/lv_examples.h"
 
 /*********************
+*      My Basic LvGl
+*********************/
+#include "my_basic.h"
+#include "lvgl_bindings.h"
+
+/*********************
 *      DEFINES
 *********************/
 
@@ -57,12 +63,12 @@ int main(int argc, char** argv)
      * item.
      */
 
-    lv_demo_widgets();
+    //lv_demo_widgets();
     //lv_demo_benchmark();
     //lv_demo_keypad_encoder();
     //lv_demo_printer();
     //lv_demo_stress();
-    //lv_ex_get_started_1();
+    lv_ex_get_started_1();
     //lv_ex_get_started_2();
     //lv_ex_get_started_3();
 
@@ -88,6 +94,23 @@ int main(int argc, char** argv)
     //lv_ex_gauge_1();
     //lv_ex_img_1();
     //lv_ex_tileview_1();
+
+
+    static lv_style_t MyBasic_output_style;
+    lv_style_init(&MyBasic_output_style);
+    lv_obj_t* MyBasic_output = lv_scr_act();
+    lv_obj_add_style(MyBasic_output, LV_OBJ_PART_MAIN, &MyBasic_output_style);
+
+    struct mb_interpreter_t* bas = NULL;
+    char* buffer = "print \"Hello basic!\"\na=1\nb=2\nSWAP(a,b)\nprint a\nx = GetMainLvObj()\nprint \"Ho preso il main lv obj \", x\nb = LvButtonCreate(x, 8, 100, 200, 40)\nprint \"Ho creato un pulsante\", b\n";
+    mb_init();
+    mb_open(&bas);
+    enableLVGL(bas, MyBasic_output, &MyBasic_output_style);
+    mb_load_string(bas, buffer, true);
+    mb_run(bas, true);
+    mb_close(&bas);
+    mb_dispose();
+
 
     while (1) {
         /* Periodically call the lv_task handler.
