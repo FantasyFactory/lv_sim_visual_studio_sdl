@@ -226,6 +226,44 @@ static int _get_main_lv_obj(struct mb_interpreter_t* s, void** l) {
 }
 
 
+static int _LvOnClick(struct mb_interpreter_t* s, void** l) {
+    int result = MB_FUNC_OK;
+
+    mb_assert(s && l);
+
+    //mb_check(mb_attempt_func_begin(s, l));
+    //mb_check(mb_attempt_func_end(s, l));
+
+    mb_check(mb_attempt_open_bracket(s, l));
+
+    {
+        mb_value_t routine;
+        mb_value_t args[1];
+        mb_value_t ret;
+
+        lv_obj_t* p;
+        char* str = 0;
+        mb_value_t arg;
+        mb_make_nil(arg);
+
+        mb_check(mb_pop_value(s, l, &arg));
+        mb_check(mb_get_ref_value(s, l, arg, (void**)&p));
+        mb_check(mb_pop_string(s, l, &str));
+
+        mb_get_routine(s, l, str, &routine);   /* Get the "FUN" routine */
+
+        args[0].type = MB_DT_INT;
+        args[0].value.integer = 123;
+        mb_make_nil(ret);
+        mb_eval_routine(s, l, routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+        printf("Returned %d.\n", ret.value.integer);
+    }
+
+    mb_check(mb_attempt_close_bracket(s, l));
+    lv_task_handler();
+    return result;
+}
+
 void enableLVGLprint(struct mb_interpreter_t* bas, lv_obj_t* l) {
     my_basic_output_label = l;
     mb_set_printer(bas, lvglprint);
@@ -240,5 +278,6 @@ void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
     mb_register_func(bas, "LvButtonCreate", _lv_btn_create);
     mb_register_func(bas, "LvLabelCreate", _lv_label_create);
     mb_register_func(bas, "LvLabelSetText", _lv_label_set_text);
+    mb_register_func(bas, "LvOnClick", _LvOnClick);
     //mb_end_module(s);
 }
