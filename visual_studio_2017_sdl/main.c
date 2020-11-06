@@ -21,6 +21,18 @@
 #include "my_basic.h"
 #include "lvgl_bindings.h"
 
+
+
+
+
+
+lv_obj_t* babau(lv_obj_t* p, lv_style_t* s);
+
+
+
+
+
+
 /*********************
 *      DEFINES
 *********************/
@@ -68,7 +80,7 @@ int main(int argc, char** argv)
     //lv_demo_keypad_encoder();
     //lv_demo_printer();
     //lv_demo_stress();
-    lv_ex_get_started_1();
+    //lv_ex_get_started_1();
     //lv_ex_get_started_2();
     //lv_ex_get_started_3();
 
@@ -101,16 +113,33 @@ int main(int argc, char** argv)
     lv_obj_t* MyBasic_output = lv_scr_act();
     lv_obj_add_style(MyBasic_output, LV_OBJ_PART_MAIN, &MyBasic_output_style);
 
+
+
+#ifndef skipthis
     struct mb_interpreter_t* bas = NULL;
-    char* buffer = "print \"Hello basic!\"\na=1\nb=2\nSWAP(a,b)\nprint a\nx = GetMainLvObj()\nprint \"Ho preso il main lv obj \", x\nb = LvButtonCreate(x, 8, 100, 200, 40)\nprint \"Ho creato un pulsante\", b\n";
+    char* buffer =  "CrLf = chr(13) + chr(10)\n"
+                    "print \"Hello basic!\", CrLf\n"
+                    "x = GetMainLvObj()\n"
+                    "print \"Get main lv obj \", x, CrLf\n"
+                    "b = LvButtonCreate(x, 32, 64, 160, 48)\n"
+                    "print \"button 1 \", b, CrLf\n"
+                    "b1 = LvButtonCreate(x, 32, 128, 160, 48)\n"
+                    "print \"button 2 \", b1, CrLf\n"
+                    "l = LvLabelCreate(b, 8, 8, 128, 32)\n"
+                    "print \"Create a label into button 1\", l, crlf\n"
+                    "l1 = LvLabelCreate(x, 32, 192, 128, 32)\n"
+                    "print \"Create a label into main lv obj\", l1, CrLf\n"
+                    "LvLabelSetText(l, \"Button 1 caption\")\n"
+                    "LvLabelSetText(l1, \"Label 2 text\")\n";
     mb_init();
     mb_open(&bas);
     enableLVGL(bas, MyBasic_output, &MyBasic_output_style);
     mb_load_string(bas, buffer, true);
     mb_run(bas, true);
-    mb_close(&bas);
-    mb_dispose();
 
+#else
+    lv_obj_t* _p1 = babau(MyBasic_output, &MyBasic_output_style);
+#endif 
 
     while (1) {
         /* Periodically call the lv_task handler.
@@ -119,8 +148,49 @@ int main(int argc, char** argv)
         Sleep(10);       /*Just to let the system breathe */
     }
 
+#ifndef skipthis
+    mb_close(&bas);
+    mb_dispose();
+#endif
+
     return 0;
 }
+
+
+
+lv_obj_t* babau(lv_obj_t* p, lv_style_t* s) {
+    static lv_obj_t* my_basic_main_lv_obj;
+    lv_style_t* my_basic_main_lv_style;
+    my_basic_main_lv_obj = p;
+    my_basic_main_lv_style = s;
+
+    
+
+    lv_obj_t* _p = (lv_obj_t*)malloc(sizeof(lv_obj_t));
+    if (_p) memcpy(_p, my_basic_main_lv_obj, sizeof(lv_obj_t)); else return MB_EXTENDED_ABORT;
+
+    LV_FONT_DECLARE(Ubuntu_16px);
+    int x1=8, y1=100, x2=200, y2=40;
+
+    lv_style_t new_lv_label_main_style;
+    lv_style_init(&new_lv_label_main_style);
+    lv_style_copy(&new_lv_label_main_style, my_basic_main_lv_style);
+    //lv_style_set_text_font(&new_lv_label_main_style, LV_STATE_DEFAULT, &Ubuntu_16px);
+    lv_style_set_text_color(&new_lv_label_main_style, LV_STATE_DEFAULT, LV_COLOR_BLUE);
+    lv_style_set_bg_color(&new_lv_label_main_style, LV_OBJ_PART_MAIN, LV_COLOR_YELLOW);
+    lv_task_handler();
+
+    //lv_obj_t* _p1 = lv_btn_create(_p, NULL);
+    lv_obj_t* _p1 = lv_btn_create(my_basic_main_lv_obj, NULL);
+    lv_task_handler();
+    //lv_obj_add_style(_p1, LV_OBJ_PART_MAIN, &new_lv_label_main_style);
+    lv_obj_set_pos(_p1, x1, y1);
+    lv_obj_set_size(_p1, x2, y2);
+
+    return _p1;
+
+}
+
 
 /**********************
 *   STATIC FUNCTIONS
