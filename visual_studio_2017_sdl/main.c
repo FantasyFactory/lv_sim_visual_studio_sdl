@@ -20,15 +20,12 @@
 *********************/
 #include "my_basic.h"
 #include "lvgl_bindings.h"
-
-
-
-
-
+#include <assert.h>
 
 lv_obj_t* babau(lv_obj_t* p, lv_style_t* s);
-
-
+static void _on_error(struct mb_interpreter_t* s, mb_error_e e, const char* m, const char* f, int p, unsigned short row, unsigned short col, int abort_code);
+int bas_delay(struct mb_interpreter_t* s, void** l);
+#define log_e printf
 
 
 
@@ -130,9 +127,17 @@ int main(int argc, char** argv)
                     "l1 = LvLabelCreate(x, 32, 192, 128, 32)\n"
                     "print \"Create a label into main lv obj\", l1, CrLf\n"
                     "LvLabelSetText(l, \"Button 1 caption\")\n"
-                    "LvLabelSetText(l1, \"Label 2 text\")\n";
+                    "for i=1 to 10\n"
+                    "t = \"Label 2 text \" + str(i)\n"
+                    "LvLabelSetText(l1, t)\n"
+                    "delay(1000)\n"
+                    "print t, CrLf\n"
+                    "next\n";
+    printf("%s", buffer);
     mb_init();
     mb_open(&bas);
+    mb_register_func(bas, "DELAY", bas_delay);
+    mb_set_error_handler(bas, _on_error);
     enableLVGL(bas, MyBasic_output, &MyBasic_output_style);
     mb_load_string(bas, buffer, true);
     mb_run(bas, true);
@@ -195,6 +200,57 @@ lv_obj_t* babau(lv_obj_t* p, lv_style_t* s) {
 /**********************
 *   STATIC FUNCTIONS
 **********************/
+
+static void _on_error(struct mb_interpreter_t* s, mb_error_e e, const char* m, const char* f, int p, unsigned short row, unsigned short col, int abort_code) {
+    mb_unrefvar(s);
+    mb_unrefvar(p);
+
+    if (e != SE_NO_ERR) {
+        if (f) {
+            if (e == SE_RN_WRONG_FUNCTION_REACHED) {
+                log_e(
+                    "Error:\n    Ln %d, Col %d in Func: %s\n    Code %d, Abort Code %d\n    Message: %s.\n",
+                    row, col, f,
+                    e, abort_code,
+                    m
+                );
+            }
+            else {
+                log_e(
+                    "Error:\n    Ln %d, Col %d in File: %s\n    Code %d, Abort Code %d\n    Message: %s.\n",
+                    row, col, f,
+                    e, e == SE_EA_EXTENDED_ABORT ? abort_code - MB_EXTENDED_ABORT : abort_code,
+                    m
+                );
+            }
+        }
+        else {
+            log_e(
+                "Error:\n    Ln %d, Col %d\n    Code %d, Abort Code %d\n    Message: %s.\n",
+                row, col,
+                e, e == SE_EA_EXTENDED_ABORT ? abort_code - MB_EXTENDED_ABORT : abort_code,
+                m
+            );
+        }
+    }
+}
+
+int bas_delay(struct mb_interpreter_t* s, void** l) {
+    int result = MB_FUNC_OK;
+    int64_t n = 0;
+    
+    mb_assert(s && l);
+    mb_check(mb_attempt_open_bracket(s, l));
+    mb_check(mb_pop_int(s, l, &n));
+    mb_check(mb_attempt_close_bracket(s, l));
+
+    for (; n > 0; n -= 20) {
+        SDL_Delay(20);
+        lv_task_handler();
+    }
+    //Sleep(n);
+    return result;
+}
 
 
 /**
