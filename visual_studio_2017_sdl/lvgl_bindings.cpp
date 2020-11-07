@@ -6,6 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <assert.h>
+#define log_i printf
 #endif
 #include "my_basic.h"
 #include "lvgl/lvgl.h"
@@ -54,7 +55,9 @@ static void lv_obj_unref(struct mb_interpreter_t* s, void* d) {
 
     mb_assert(s);
 
-    if (p != my_basic_main_lv_obj) free(p);
+    if (p != my_basic_main_lv_obj) {
+        free(p);
+    }
 }
 
 static void* lv_obj_clone(struct mb_interpreter_t* s, void* d) {
@@ -224,9 +227,6 @@ static int _get_main_lv_obj(struct mb_interpreter_t* s, void** l) {
 
     {
         mb_value_t ret;
-        //lv_obj_t* _p = (lv_obj_t*)malloc(sizeof(lv_obj_t));
-        //if (_p) memcpy(_p, my_basic_main_lv_obj, sizeof(lv_obj_t)); else return MB_EXTENDED_ABORT;
-        //mb_make_ref_value(s, _p, &ret, lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt);
         mb_make_ref_value(s, my_basic_main_lv_obj, &ret, lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt);
         mb_check(mb_push_value(s, l, ret));
     }
@@ -235,62 +235,35 @@ static int _get_main_lv_obj(struct mb_interpreter_t* s, void** l) {
 }
 
 
-static int _LvOnClick(struct mb_interpreter_t* s, void** l) {
-    int result = MB_FUNC_OK;
 
-    mb_assert(s && l);
-
-    //mb_check(mb_attempt_func_begin(s, l));
-    //mb_check(mb_attempt_func_end(s, l));
-
-    mb_check(mb_attempt_open_bracket(s, l));
-
-    {
-        mb_value_t routine;
-        mb_value_t args[1];
-        mb_value_t ret;
-
-        lv_obj_t* p;
-        char* str = 0;
-        mb_value_t arg;
-        mb_make_nil(arg);
-
-        mb_check(mb_pop_value(s, l, &arg));
-        mb_check(mb_get_ref_value(s, l, arg, (void**)&p));
-        mb_check(mb_pop_string(s, l, &str));
-
-        mb_get_routine(s, l, str, &routine);   /* Get the "FUN" routine */
-
-        args[0].type = MB_DT_INT;
-        args[0].value.integer = 123;
-        mb_make_nil(ret);
-        mb_eval_routine(s, l, routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
-        printf("Returned %d.\n", ret.value.integer);
-    }
-
-    mb_check(mb_attempt_close_bracket(s, l));
-    lv_task_handler();
-    return result;
-}
 
 static void _LvEventHandler(lv_obj_t* obj, lv_event_t event) {
-    int i;
-    log_i("LvEventHandler");
-    
-    for (i = 0; i < LvEvtHandlersCount; i++) {
-        if (LvEventHandlers[i].obj == obj) {
-            log_i("Handle event %d for object %d as %s", event, LvEventHandlers[i].obj, LvEventHandlers[i].routine);
-            mb_value_t args[2];
-            mb_value_t ret;
-            args[0].type = MB_DT_INT;
-            args[0].value.integer = LvEventHandlers[i].obj;
-            args[1].type = MB_DT_INT;
-            args[1].value.integer = event;
-            mb_make_nil(ret);
-            mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
-            printf("Returned %d.\n", ret.value.integer);
-        }
+
+    switch (event) {
+        case(LV_EVENT_CLICKED):
+            {
+                int i, result;
+        
+                for (i = 0; i < LvEvtHandlersCount; i++) {
+                    if (LvEventHandlers[i].obj == obj) {
+                        log_i("Handle event %d for object %x at %x", event, LvEventHandlers[i].obj, LvEventHandlers[i].routine);
+                        mb_value_t args[2];
+                        mb_value_t ret;
+
+                        mb_make_ref_value(LvEventHandlers[i].s, LvEventHandlers[i].obj, &args[0], lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt);
+
+                        args[1].type = MB_DT_INT;
+                        args[1].value.integer = event;
+                        mb_make_nil(ret);
+                        result = mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, args, 2, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+                        printf("Returned %d.\n", ret.value.integer);
+                    }
+                }
+
+                break;
+            }
     }
+
 }
 
 static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
@@ -314,14 +287,20 @@ static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
         mb_check(mb_get_ref_value(s, l, arg, (void**)&p));
         mb_check(mb_pop_string(s, l, &str));
 
-        mb_get_routine(s, l, str, &routine);   /* Get the routine name*/
+        for (int i = 0; str[i] != '\0'; i++) {
+            if (str[i] >= 'a' && str[i] <= 'z') {
+                str[i] = str[i] - 32;
+            }
+        }
+
+        mb_get_routine(s, l, str, &routine);   /* Get the routine from name*/
 
         LvEventHandlers[LvEvtHandlersCount].obj = p;
         LvEventHandlers[LvEvtHandlersCount].routine = routine;
         LvEventHandlers[LvEvtHandlersCount].s = s;
         LvEventHandlers[LvEvtHandlersCount].l = l;
         lv_obj_set_event_cb(p, _LvEventHandler);
-        log_i("Set handler %d for object %d as %s", LvEvtHandlersCount, p, routine);
+        log_i("Set handler %d for object %x as %s at %x\n", LvEvtHandlersCount, p, str, routine);
         LvEvtHandlersCount++;
     }
 
@@ -345,7 +324,6 @@ void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
     mb_register_func(bas, "LvButtonCreate", _lv_btn_create);
     mb_register_func(bas, "LvLabelCreate", _lv_label_create);
     mb_register_func(bas, "LvLabelSetText", _lv_label_set_text);
-    //mb_register_func(bas, "LvOnClick", _LvOnClick);
     mb_register_func(bas, "SetLvEventHandler", _SetLvEventHandler);
     //mb_end_module(s);
 }

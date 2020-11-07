@@ -23,6 +23,7 @@
 #include <assert.h>
 
 lv_obj_t* babau(lv_obj_t* p, lv_style_t* s);
+static int _native(struct mb_interpreter_t* s, void** l);
 static void _on_error(struct mb_interpreter_t* s, mb_error_e e, const char* m, const char* f, int p, unsigned short row, unsigned short col, int abort_code);
 int bas_delay(struct mb_interpreter_t* s, void** l);
 #define log_e printf
@@ -34,7 +35,7 @@ int bas_delay(struct mb_interpreter_t* s, void** l);
 *      DEFINES
 *********************/
 
-/**********************
+/********************** 
 *      TYPEDEFS
 **********************/
 
@@ -117,19 +118,26 @@ int main(int argc, char** argv)
     char* buffer =  "CrLf = chr(13) + chr(10)\n"
                     "LV_EVENT_CLICKED = 6\n"
                     "l=0\n"
+                    "b=9999 'This may define a vars as global\n"
+                    "def fun(num)\n"
+                    "  print num; \n"
+                    "  return num * 2 ' Return a new value back\n"
+                    "enddef\n"
                     "def LvEventHandler(obj, evt)\n"
+                    "  print \"Object \", obj, \" b \", b, \" event \", evt, CrLf\n"
                     "  if obj=b and evt=LV_EVENT_CLICKED then\n"
                     "     LvLabelSetText(l, \"Button 1 CLICKED\")\n"
-                    "     return l\n"
+                    "     return 10'l\n"
                     "  endif\n"
-                    "  print \"Object \", obj, \" event \", evt, CrLf\n"
-                    "  return evt\n"
+                    "  return 20'evt\n"
                     "enddef\n"         
-                    "print \"Hello basic!\", CrLf\n"                 
+                    "print \"Hello basic!\", CrLf\n"
+                    "print \"Direct call: \", LvEventHandler(7,9)\n"
                     "x = GetMainLvObj()\n"
                     "print \"Get main lv obj \", x, CrLf\n"
                     "b = LvButtonCreate(x, 32, 64, 160, 48)\n"
                     "print \"button 1 \", b, CrLf\n"
+                    "native\n"
                     "b1 = LvButtonCreate(x, 32, 128, 160, 48)\n"
                     "print \"button 2 \", b1, CrLf\n"
                     "l = LvLabelCreate(b, 8, 8, 128, 32)\n"
@@ -145,10 +153,11 @@ int main(int argc, char** argv)
                     "delay(1000)\n"
                     "print t, CrLf\n"
                     "next\n";
-    printf("%s", buffer);
+   // printf("%s", buffer);
     mb_init();
     mb_open(&bas);
     mb_register_func(bas, "DELAY", bas_delay);
+    mb_register_func(bas, "native", _native);
     mb_set_error_handler(bas, _on_error);
     enableLVGL(bas, MyBasic_output, &MyBasic_output_style);
     mb_load_string(bas, buffer, true);
@@ -206,6 +215,47 @@ lv_obj_t* babau(lv_obj_t* p, lv_style_t* s) {
 
     return _p1;
 
+}
+
+
+static int _native(struct mb_interpreter_t* s, void** l) {
+    int result = MB_FUNC_OK;
+
+    mb_assert(s && l);
+
+    mb_check(mb_attempt_func_begin(s, l));
+    mb_check(mb_attempt_func_end(s, l));
+
+    {
+#ifdef Test2
+        mb_value_t routine;
+        mb_value_t args[1];
+        mb_value_t ret;
+
+        result = mb_get_routine(s, l, "FUN", &routine);   /* Get the "FUN" routine */
+
+        args[0].type = MB_DT_INT;
+        args[0].value.integer = 123;
+        mb_make_nil(ret);
+        result = mb_eval_routine(s, l, routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+#else
+        mb_value_t routine;
+        mb_value_t args[2];
+        mb_value_t ret;
+
+        result = mb_get_routine(s, l, "LVEVENTHANDLER", &routine);   /* Get the "FUN" routine */
+
+        args[0].type = MB_DT_INT;
+        args[0].value.integer = 123;
+        args[1].type = MB_DT_INT;
+        args[1].value.integer = 456;
+        mb_make_nil(ret);
+        result = mb_eval_routine(s, l, routine, args, 2, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+#endif
+        printf("Returned %d.\n", ret.value.integer);
+    }
+
+    return result;
 }
 
 
