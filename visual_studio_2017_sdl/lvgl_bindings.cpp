@@ -15,6 +15,15 @@ static lv_obj_t* my_basic_output_label;
 static lv_obj_t* my_basic_main_lv_obj;
 lv_style_t* my_basic_main_lv_style;
 LV_FONT_DECLARE(Ubuntu_16px);
+#define MaxLvEvtHandlers 32
+
+struct LvEventHandler {
+    lv_obj_t* obj;
+    mb_value_t routine;
+    struct mb_interpreter_t* s;
+    void** l;
+} LvEventHandlers[MaxLvEvtHandlers];
+int_t LvEvtHandlersCount = 0;
 
 static int lvglprint(const char* format, ...) {
     char* buf = (char*)malloc(128); // Massimo 128 bytes per linea ? Nessun controllo qui !
@@ -264,6 +273,64 @@ static int _LvOnClick(struct mb_interpreter_t* s, void** l) {
     return result;
 }
 
+static void _LvEventHandler(lv_obj_t* obj, lv_event_t event) {
+    int i;
+    log_i("LvEventHandler");
+    
+    for (i = 0; i < LvEvtHandlersCount; i++) {
+        if (LvEventHandlers[i].obj == obj) {
+            log_i("Handle event %d for object %d as %s", event, LvEventHandlers[i].obj, LvEventHandlers[i].routine);
+            mb_value_t args[2];
+            mb_value_t ret;
+            args[0].type = MB_DT_INT;
+            args[0].value.integer = LvEventHandlers[i].obj;
+            args[1].type = MB_DT_INT;
+            args[1].value.integer = event;
+            mb_make_nil(ret);
+            mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+            printf("Returned %d.\n", ret.value.integer);
+        }
+    }
+}
+
+static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
+    int result = MB_FUNC_OK;
+
+    mb_assert(s && l);
+
+    //mb_check(mb_attempt_func_begin(s, l));
+    //mb_check(mb_attempt_func_end(s, l));
+
+    mb_check(mb_attempt_open_bracket(s, l));
+
+    {
+        mb_value_t routine;
+        lv_obj_t* p;
+        char* str = 0;
+        mb_value_t arg;
+        mb_make_nil(arg);
+
+        mb_check(mb_pop_value(s, l, &arg));
+        mb_check(mb_get_ref_value(s, l, arg, (void**)&p));
+        mb_check(mb_pop_string(s, l, &str));
+
+        mb_get_routine(s, l, str, &routine);   /* Get the routine name*/
+
+        LvEventHandlers[LvEvtHandlersCount].obj = p;
+        LvEventHandlers[LvEvtHandlersCount].routine = routine;
+        LvEventHandlers[LvEvtHandlersCount].s = s;
+        LvEventHandlers[LvEvtHandlersCount].l = l;
+        lv_obj_set_event_cb(p, _LvEventHandler);
+        log_i("Set handler %d for object %d as %s", LvEvtHandlersCount, p, routine);
+        LvEvtHandlersCount++;
+    }
+
+    mb_check(mb_attempt_close_bracket(s, l));
+    lv_task_handler();
+    return result;
+}
+
+
 void enableLVGLprint(struct mb_interpreter_t* bas, lv_obj_t* l) {
     my_basic_output_label = l;
     mb_set_printer(bas, lvglprint);
@@ -278,6 +345,7 @@ void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
     mb_register_func(bas, "LvButtonCreate", _lv_btn_create);
     mb_register_func(bas, "LvLabelCreate", _lv_label_create);
     mb_register_func(bas, "LvLabelSetText", _lv_label_set_text);
-    mb_register_func(bas, "LvOnClick", _LvOnClick);
+    //mb_register_func(bas, "LvOnClick", _LvOnClick);
+    mb_register_func(bas, "SetLvEventHandler", _SetLvEventHandler);
     //mb_end_module(s);
 }
