@@ -23,10 +23,12 @@
 #include <assert.h>
 
 lv_obj_t* babau(lv_obj_t* p, lv_style_t* s);
-static int _native(struct mb_interpreter_t* s, void** l);
 static void _on_error(struct mb_interpreter_t* s, mb_error_e e, const char* m, const char* f, int p, unsigned short row, unsigned short col, int abort_code);
 int bas_delay(struct mb_interpreter_t* s, void** l);
 #define log_e printf
+
+static lv_style_t MyBasic_output_style;
+lv_obj_t* MyBasic_output;
 
 
 
@@ -106,9 +108,8 @@ int main(int argc, char** argv)
     //lv_ex_tileview_1();
 
 
-    static lv_style_t MyBasic_output_style;
     lv_style_init(&MyBasic_output_style);
-    lv_obj_t* MyBasic_output = lv_scr_act();
+    MyBasic_output = lv_scr_act();
     lv_obj_add_style(MyBasic_output, LV_OBJ_PART_MAIN, &MyBasic_output_style);
 
 
@@ -150,7 +151,7 @@ int main(int argc, char** argv)
                     "for i=1 to 10\n"
                     "t = \"Label 2 text \" + str(i)\n"
                     "LvLabelSetText(l1, t)\n"
-                    "delay(1000)\n"
+                    "delay(2000)\n"
                     "print t, CrLf\n"
                     "next\n";
    // printf("%s", buffer);
@@ -218,45 +219,7 @@ lv_obj_t* babau(lv_obj_t* p, lv_style_t* s) {
 }
 
 
-static int _native(struct mb_interpreter_t* s, void** l) {
-    int result = MB_FUNC_OK;
 
-    mb_assert(s && l);
-
-    mb_check(mb_attempt_func_begin(s, l));
-    mb_check(mb_attempt_func_end(s, l));
-
-    {
-#ifdef Test2
-        mb_value_t routine;
-        mb_value_t args[1];
-        mb_value_t ret;
-
-        result = mb_get_routine(s, l, "FUN", &routine);   /* Get the "FUN" routine */
-
-        args[0].type = MB_DT_INT;
-        args[0].value.integer = 123;
-        mb_make_nil(ret);
-        result = mb_eval_routine(s, l, routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
-#else
-        mb_value_t routine;
-        mb_value_t args[2];
-        mb_value_t ret;
-
-        result = mb_get_routine(s, l, "LVEVENTHANDLER", &routine);   /* Get the "FUN" routine */
-
-        args[0].type = MB_DT_INT;
-        args[0].value.integer = 123;
-        args[1].type = MB_DT_INT;
-        args[1].value.integer = 456;
-        mb_make_nil(ret);
-        result = mb_eval_routine(s, l, routine, args, 2, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
-#endif
-        printf("Returned %d.\n", ret.value.integer);
-    }
-
-    return result;
-}
 
 
 /**********************

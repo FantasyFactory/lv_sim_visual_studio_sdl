@@ -56,7 +56,8 @@ static void lv_obj_unref(struct mb_interpreter_t* s, void* d) {
     mb_assert(s);
 
     if (p != my_basic_main_lv_obj) {
-        free(p);
+        log_i("Destroy lv_obj_t * %x", (int_t)p);
+        //free(p);
     }
 }
 
@@ -250,12 +251,12 @@ static void _LvEventHandler(lv_obj_t* obj, lv_event_t event) {
                         mb_value_t args[2];
                         mb_value_t ret;
 
-                        mb_make_ref_value(LvEventHandlers[i].s, LvEventHandlers[i].obj, &args[0], lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt);
+                        mb_check(mb_make_ref_value(LvEventHandlers[i].s, LvEventHandlers[i].obj, &args[0], lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt) );
 
                         args[1].type = MB_DT_INT;
                         args[1].value.integer = event;
                         mb_make_nil(ret);
-                        result = mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, args, 2, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+                        mb_check(mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, &args, 2, &ret) ); /* Evaluate the "FUN" routine with arguments, and get the returned value */
                         printf("Returned %d.\n", ret.value.integer);
                     }
                 }
@@ -300,7 +301,7 @@ static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
         LvEventHandlers[LvEvtHandlersCount].s = s;
         LvEventHandlers[LvEvtHandlersCount].l = l;
         lv_obj_set_event_cb(p, _LvEventHandler);
-        log_i("Set handler %d for object %x as %s at %x\n", LvEvtHandlersCount, p, str, routine);
+        log_i("Set handler %d for object %x as %s\n", LvEvtHandlersCount, p, str);
         LvEvtHandlersCount++;
     }
 
@@ -326,4 +327,45 @@ void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
     mb_register_func(bas, "LvLabelSetText", _lv_label_set_text);
     mb_register_func(bas, "SetLvEventHandler", _SetLvEventHandler);
     //mb_end_module(s);
+}
+
+int _native(struct mb_interpreter_t* s, void** l) {
+    int result = MB_FUNC_OK;
+
+    mb_assert(s && l);
+
+    mb_check(mb_attempt_func_begin(s, l));
+    mb_check(mb_attempt_func_end(s, l));
+
+    {
+#ifdef Test2
+        mb_value_t routine;
+        mb_value_t args[1];
+        mb_value_t ret;
+
+        result = mb_get_routine(s, l, "FUN", &routine);   /* Get the "FUN" routine */
+
+        args[0].type = MB_DT_INT;
+        args[0].value.integer = 123;
+        mb_make_nil(ret);
+        result = mb_eval_routine(s, l, routine, args, 1, &ret); /* Evaluate the "FUN" routine with arguments, and get the returned value */
+#else
+        mb_value_t routine;
+        mb_value_t args[2];
+        mb_value_t ret;
+
+        result = mb_get_routine(s, l, "LVEVENTHANDLER", &routine);   /* Get the routine */
+
+        mb_check(mb_make_ref_value(s, my_basic_main_lv_obj, &args[0], lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt) );
+        
+
+        args[1].type = MB_DT_INT;
+        args[1].value.integer = 456;
+        mb_make_nil(ret);
+        result = mb_eval_routine(s, l, routine, &args, 2, &ret); /* Evaluate the routine with arguments, and get the returned value */
+#endif
+        printf("Returned %d.\n", ret.value.integer);
+    }
+
+    return result;
 }
