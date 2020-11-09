@@ -118,19 +118,13 @@ int main(int argc, char** argv)
     struct mb_interpreter_t* bas = NULL;
     char* buffer =  "CrLf = chr(13) + chr(10)\n"
                     "LV_EVENT_CLICKED = 6\n"
-                    "l=0\n"
-                    "b=9999 'This may define a vars as global\n"
-                    "def fun(num)\n"
-                    "  print num; \n"
-                    "  return num * 2 ' Return a new value back\n"
-                    "enddef\n"
                     "def LvEventHandler(obj, evt)\n"
                     "  print \"Object \", obj, \" b \", b, \" event \", evt, CrLf\n"
                     "  if obj=b and evt=LV_EVENT_CLICKED then\n"
-                    "     LvLabelSetText(l, \"Button 1 CLICKED\")\n"
-                    "     return 10'l\n"
+                    "     LvLabelSetText(lb, \"Button 1 CLICKED\")\n"
+                    "     return evt\n"
                     "  endif\n"
-                    "  return 20'evt\n"
+                    "  return 0\n"
                     "enddef\n"         
                     "print \"Hello basic!\", CrLf\n"
                     "print \"Direct call: \", LvEventHandler(7,9)\n"
@@ -138,27 +132,25 @@ int main(int argc, char** argv)
                     "print \"Get main lv obj \", x, CrLf\n"
                     "b = LvButtonCreate(x, 32, 64, 160, 48)\n"
                     "print \"button 1 \", b, CrLf\n"
-                    "native\n"
                     "b1 = LvButtonCreate(x, 32, 128, 160, 48)\n"
                     "print \"button 2 \", b1, CrLf\n"
-                    "l = LvLabelCreate(b, 8, 8, 128, 32)\n"
-                    "print \"Create a label into button 1\", l, crlf\n"            
-                    "l1 = LvLabelCreate(x, 32, 192, 128, 32)\n"
+                    "l = LvLabelCreate(x, 32, 192, 128, 32)\n"
                     "print \"Create a label into main lv obj\", l1, CrLf\n"
-                    "LvLabelSetText(l, \"Button 1 caption\")\n"
+                    "lb = LvLabelCreate(b, 8, 8, 128, 32)\n"
+                    "print \"Create a label into button 1\", lb, crlf\n"            
+                    "LvLabelSetText(lb, \"Button 1 caption\")\n"
                     "SetLvEventHandler(b, \"LvEventHandler\")\n"
                     "t = \"Ciao\"\n"
                     "for i=1 to 10\n"
-                    "t = \"Label 2 text \" + str(i)\n"
-                    "LvLabelSetText(l1, t)\n"
-                    "delay(2000)\n"
-                    "print t, CrLf\n"
+                    "  t = \"Label 2 text \" + str(i)\n"
+                    "  print t, CrLf\n"
+                    "  LvLabelSetText(l, t)\n"
+                    "  delay(2000)\n" 
                     "next\n";
-   // printf("%s", buffer);
+    printf("%s", buffer);
     mb_init();
     mb_open(&bas);
     mb_register_func(bas, "DELAY", bas_delay);
-    mb_register_func(bas, "native", _native);
     mb_set_error_handler(bas, _on_error);
     enableLVGL(bas, MyBasic_output, &MyBasic_output_style);
     mb_load_string(bas, buffer, true);
@@ -178,47 +170,11 @@ int main(int argc, char** argv)
 #ifndef skipthis
     mb_close(&bas);
     mb_dispose();
+    lv_obj_clean(MyBasic_output);
 #endif
 
     return 0;
 }
-
-
-
-lv_obj_t* babau(lv_obj_t* p, lv_style_t* s) {
-    static lv_obj_t* my_basic_main_lv_obj;
-    lv_style_t* my_basic_main_lv_style;
-    my_basic_main_lv_obj = p;
-    my_basic_main_lv_style = s;
-
-    
-
-    lv_obj_t* _p = (lv_obj_t*)malloc(sizeof(lv_obj_t));
-    if (_p) memcpy(_p, my_basic_main_lv_obj, sizeof(lv_obj_t)); else return MB_EXTENDED_ABORT;
-
-    LV_FONT_DECLARE(Ubuntu_16px);
-    int x1=8, y1=100, x2=200, y2=40;
-
-    lv_style_t new_lv_label_main_style;
-    lv_style_init(&new_lv_label_main_style);
-    lv_style_copy(&new_lv_label_main_style, my_basic_main_lv_style);
-    //lv_style_set_text_font(&new_lv_label_main_style, LV_STATE_DEFAULT, &Ubuntu_16px);
-    lv_style_set_text_color(&new_lv_label_main_style, LV_STATE_DEFAULT, LV_COLOR_BLUE);
-    lv_style_set_bg_color(&new_lv_label_main_style, LV_OBJ_PART_MAIN, LV_COLOR_YELLOW);
-    lv_task_handler();
-
-    //lv_obj_t* _p1 = lv_btn_create(_p, NULL);
-    lv_obj_t* _p1 = lv_btn_create(my_basic_main_lv_obj, NULL);
-    lv_task_handler();
-    //lv_obj_add_style(_p1, LV_OBJ_PART_MAIN, &new_lv_label_main_style);
-    lv_obj_set_pos(_p1, x1, y1);
-    lv_obj_set_size(_p1, x2, y2);
-
-    return _p1;
-
-}
-
-
 
 
 
