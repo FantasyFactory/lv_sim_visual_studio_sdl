@@ -108,43 +108,63 @@ int main(int argc, char** argv)
     //lv_ex_tileview_1();
 
 
+    //while (1) {
+    //    /* Periodically call the lv_task handler.
+    //    * It could be done in a timer interrupt or an OS task too.*/
+    //    lv_task_handler();
+    //    Sleep(10);       /*Just to let the system breathe */
+    //}
+
+
+
     lv_style_init(&MyBasic_output_style);
     MyBasic_output = lv_scr_act();
     lv_obj_add_style(MyBasic_output, LV_OBJ_PART_MAIN, &MyBasic_output_style);
 
-
-
-#ifndef skipthis
     struct mb_interpreter_t* bas = NULL;
     char* buffer =  "CrLf = chr(13) + chr(10)\n"
-                    "LV_EVENT_CLICKED = 6\n"        
+                    "LV_EVENT_CLICKED = 6\n"
+                    "GlobalVal = 100\n"
                     "print \"Hello basic!\", CrLf\n"
                     "x = GetMainLvObj()\n"
                     "print \"Get main lv obj \", x, CrLf\n"
-                    "b = LvButtonCreate(x, 32, 64, 160, 48)\n"
-                    "print \"button 1 \", b, CrLf\n"
-                    "b1 = LvButtonCreate(x, 32, 128, 160, 48)\n"
-                    "print \"button 2 \", b1, CrLf\n"
-                    "l = LvLabelCreate(x, 32, 192, 128, 32)\n"
-                    "print \"Create a label into main lv obj\", l1, CrLf\n"
-                    "lb = LvLabelCreate(b, 8, 8, 128, 32)\n"
-                    "print \"Create a label into button 1\", lb, crlf\n"            
-                    "LvLabelSetText(lb, \"Button 1 caption\")\n"
-                    "def LvEventHandler(obj, evt)\n"
-                    "  print \"Object \", obj, \" b \", b, \" event \", evt, CrLf\n"
-                    "  if obj=b and evt=LV_EVENT_CLICKED then\n"
-                    "     LvLabelSetText(lb, \"Button 1 CLICKED\")\n"
-                    "     return evt\n"
-                    "  endif\n"
-                    "  return 0\n"
+                    "b1 = LvButtonCreate(x, 32, 64, 160, 48)\n"
+                    "print \"button 1 \", b1, CrLf\n"
+                    "b2 = LvButtonCreate(x, 32, 128, 160, 48)\n"
+                    "print \"button 2 \", b2, CrLf\n"
+                    "lx = LvLabelCreate(x, 32, 192, 128, 32)\n"
+                    "print \"Create a label into main lv obj\", lx, CrLf\n"
+                    "lb1 = LvLabelCreate(b1, 8, 8, 128, 32)\n"
+                    "print \"Create a label into button 1\", lb1, crlf\n"            
+                    "lb2 = LvLabelCreate(b2, 8, 8, 128, 32)\n"
+                    "print \"Create a label into button 2\", lb2, crlf\n"
+                    "LvLabelSetText(lx, \"Current value:\" + str(GlobalVal) )\n"
+                    "LvLabelSetText(lb1, \"Click to increase\")\n"
+                    "LvLabelSetText(lb2, \"Click to decrease\")\n"
+                    "def UpdateLabel()\n"
+                    "     t = \"New value: \" + str(GlobalVal)\n"
+                    "     LvLabelSetText(lx, t )\n"
                     "enddef\n"
-                    "print \"Direct call: \", LvEventHandler(b1, LV_EVENT_CLICKED)\n"
-                    "SetLvEventHandler(b, \"LvEventHandler\")\n"
-                    "t = \"Ciao\"\n"
+                    "def OnButton1(evt)\n"
+                    "  if evt=LV_EVENT_CLICKED then\n"
+                    "     GlobalVal = GlobalVal + 10\n"
+                    "     UpdateLabel()\n"
+                    "  endif\n"
+                    "enddef\n"
+                    "def OnButton2(evt)\n"
+                    "  if evt=LV_EVENT_CLICKED then\n"
+                    "     GlobalVal = GlobalVal - 10\n"
+                    "     UpdateLabel()\n"
+                    "  endif\n"
+                    "enddef\n"
+                    "SetLvEventHandler(b1, \"OnButton1\")\n"
+                    "SetLvEventHandler(b2, \"OnButton2\")\n"
+                    "t = \"Multitasking: \"\n"
                     "for i=1 to 10\n"
-                    "  t = \"Label 2 text \" + str(i)\n"
+                    "  GlobalVal = GlobalVal +1\n"
+                    "  t = \"i = \" + str(i) + \" GlobalVal = \" + str(GlobalVal)\n"
                     "  print t, CrLf\n"
-                    "  LvLabelSetText(l, t)\n"
+                    "  UpdateLabel()\n"
                     "  delay(2000)\n" 
                     "next\n";
     printf("%s", buffer);
@@ -156,22 +176,9 @@ int main(int argc, char** argv)
     mb_load_string(bas, buffer, true);
     mb_run(bas, true);
 
-#else
-    lv_obj_t* _p1 = babau(MyBasic_output, &MyBasic_output_style);
-#endif 
-
-    while (1) {
-        /* Periodically call the lv_task handler.
-        * It could be done in a timer interrupt or an OS task too.*/
-        lv_task_handler();
-        Sleep(10);       /*Just to let the system breathe */
-    }
-
-#ifndef skipthis
     mb_close(&bas);
     mb_dispose();
     lv_obj_clean(MyBasic_output);
-#endif
 
     return 0;
 }
