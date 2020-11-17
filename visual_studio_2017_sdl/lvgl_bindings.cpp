@@ -20,7 +20,8 @@ lv_style_t* my_basic_main_lv_style;
 LV_FONT_DECLARE(Ubuntu_16px);
 static char* lv_msgbox_opt = NULL;
 #define MaxLvEvtHandlers 32
-//#define LogDebug
+#define LogDebug
+//#define SimpleUsertype
 
 struct LvEventHandler {
     lv_obj_t* obj;
@@ -122,7 +123,7 @@ static int _lv_btn_create(struct mb_interpreter_t* s, void** l) {
         lv_obj_t* p;
 
 #ifdef SimpleUsertype
-        mb_check(mb_pop_usertype(s, l, &p));
+        mb_check(mb_pop_usertype(s, l, (void**)&p));
 #else
         mb_value_t arg;
         mb_make_nil(arg);
@@ -174,7 +175,7 @@ static int _lv_label_create(struct mb_interpreter_t* s, void** l) {
         lv_obj_t* p;
 
 #ifdef SimpleUsertype
-        mb_check(mb_pop_usertype(s, l, &p));
+        mb_check(mb_pop_usertype(s, l, (void**)&p));
 #else
         mb_value_t arg;
         mb_make_nil(arg);
@@ -226,7 +227,7 @@ static int _lv_label_set_text(struct mb_interpreter_t* s, void** l) {
         lv_obj_t* p;
 
 #ifdef SimpleUsertype
-        mb_check(mb_pop_usertype(s, l, &p));
+        mb_check(mb_pop_usertype(s, l, (void**)&p));
 #else
         mb_value_t arg;
         mb_make_nil(arg);
@@ -317,6 +318,8 @@ static int _get_main_lv_obj(struct mb_interpreter_t* s, void** l) {
     mb_assert(s && l);
     mb_check(mb_attempt_open_bracket(s, l));
 
+    log_i("{_get_main_lv_obj(0x%lx)=0x%lx}\n", s, my_basic_main_lv_obj);
+
     {
         mb_value_t ret;
         mb_make_nil(ret);
@@ -327,8 +330,9 @@ static int _get_main_lv_obj(struct mb_interpreter_t* s, void** l) {
         mb_make_ref_value(s, my_basic_main_lv_obj, &ret, lv_obj_unref, lv_obj_clone, lv_obj_hash, lv_obj_cmp, lv_obj_fmt);
 #endif 
         mb_check(mb_push_value(s, l, ret));
+        log_i("{_get_main_lv_obj(0x%lx)=0x%lx}\n", s, ret.value.usertype);
 #ifdef LogDebug
-        log_i("{Main LvObj * 0x%llx}\n", (long long)my_basic_main_lv_obj);
+
 #endif
     }
 
@@ -347,7 +351,7 @@ static void _LvEventHandler(lv_obj_t* obj, lv_event_t event) {
         for (int i = 0; i < LvEvtHandlersCount; i++) {
             if (LvEventHandlers[i].obj == obj) {
 #ifdef LogDebug
-                log_i("{Handle event %d for object 0x%llx at 0x%llx}\n", event, (long long)LvEventHandlers[i].obj, (long long)LvEventHandlers[i].routine.value.usertype);
+                log_i("{Handle event %d for object 0x%lx at 0x%lx}\n", event, LvEventHandlers[i].obj, LvEventHandlers[i].routine.value.routine);
 #endif
 #ifdef objasparameter
                 mb_value_t args[2];
@@ -377,7 +381,7 @@ static void _LvEventHandler(lv_obj_t* obj, lv_event_t event) {
 
                 mb_value_t ret;
                 mb_make_nil(ret);
-                mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, args, 1, &ret);
+                mb_eval_routine(LvEventHandlers[i].s, LvEventHandlers[i].l, LvEventHandlers[i].routine, &args[0], 1, &ret);
 #endif
             }
         }
@@ -395,19 +399,23 @@ static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
 
     {
         lv_obj_t* p;
-        mb_value_t arg;
-        mb_make_nil(arg);
 
 #ifdef SimpleUsertype
-        mb_check(mb_pop_usertype(s, l, &arg));
-        p = arg.value.usertype;
+        mb_check(mb_pop_usertype(s, l, (void**)&p));
 #else
+        mb_value_t arg;
+        mb_make_nil(arg);
         mb_check(mb_pop_value(s, l, &arg));
         mb_check(mb_get_ref_value(s, l, arg, (void**)&p));
 #endif
 
-        char* str = NULL;
+        char* str = 0;
         mb_check(mb_pop_string(s, l, &str));
+
+#ifdef LogDebug
+        log_i("{Set handler %d for object 0x%lx as %s}=", LvEvtHandlersCount, p, str);
+#endif  
+
         for (int i = 0; str[i] != '\0'; i++) {
             if (str[i] >= 'a' && str[i] <= 'z') {
                 str[i] = str[i] - 32;
@@ -418,6 +426,9 @@ static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
         mb_make_nil(routine);
         mb_check(mb_get_routine(s, l, str, &routine));   /* Get the routine from name*/
 
+#ifdef LogDebug
+        log_i("0x%lx\n", routine);
+#endif 
         LvEventHandlers[LvEvtHandlersCount].obj = p;
         LvEventHandlers[LvEvtHandlersCount].routine = routine;
         LvEventHandlers[LvEvtHandlersCount].s = s;
@@ -425,7 +436,7 @@ static int _SetLvEventHandler(struct mb_interpreter_t* s, void** l) {
         lv_obj_set_event_cb(p, _LvEventHandler);
 
 #ifdef LogDebug
-        log_i("{Set handler %d for object x%llx as %s}\n", LvEvtHandlersCount, (long long)p, str);
+        log_i("{Set handler %d for object 0x%lx as %s}\n", LvEvtHandlersCount, p, str);
 #endif
         LvEvtHandlersCount++;
 
@@ -442,10 +453,18 @@ void enableLVGLprint(struct mb_interpreter_t* bas, lv_obj_t* l) {
     mb_set_printer(bas, lvglprint);
     mb_register_func(bas, "CLS", lvglclear);
 }
-
-void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
+void SetLvPtr(lv_obj_t* p, lv_style_t* s) {
     my_basic_main_lv_obj = p;
     my_basic_main_lv_style = s;
+#ifdef LogDebug
+    log_i("{SetLvObj(0x%lx, 0x%lx)}\n", p, s);
+#endif
+}
+
+void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
+#ifdef LogDebug
+    log_i("{EnableLVGL(0x%lx, 0x%lx, 0x%lx)}\n", bas, p, s);
+#endif
     //mb_begin_module(s, "LVGL");
     mb_register_func(bas, "GetMainLvObj", _get_main_lv_obj);
     mb_register_func(bas, "LvButtonCreate", _lv_btn_create);
@@ -453,5 +472,6 @@ void enableLVGL(struct mb_interpreter_t* bas, lv_obj_t* p, lv_style_t* s) {
     mb_register_func(bas, "LvLabelSetText", _lv_label_set_text);
     mb_register_func(bas, "SetLvEventHandler", _SetLvEventHandler);
     mb_register_func(bas, "LvMsgbox", _lv_msgbox);
+    SetLvPtr(p, s);
     //mb_end_module(s);
 }
